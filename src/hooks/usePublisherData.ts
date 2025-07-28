@@ -2,8 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { parseExcelFile, organizePublishers, generateSummaryStats } from '@/utils/excelParser';
 import type { 
   PublisherRecord, 
-  SummaryStats, 
-  ParsedFileData 
+  SummaryStats 
 } from '@/types';
 
 export const usePublisherData = () => {

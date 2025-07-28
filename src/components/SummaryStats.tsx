@@ -27,7 +27,7 @@ const SummaryStatsComponent: React.FC<SummaryStatsProps> = ({ summaryStats, sear
       {searchTerm && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
           <span className="text-sm text-gray-600 italic">
-            Showing filtered results for "{searchTerm}"
+            Showing filtered results for &quot;{searchTerm}&quot;
           </span>
         </div>
       )}

@@ -1,6 +1,6 @@
 export interface PublisherRecord {
   // Original Excel columns (A, B, C, etc.)
-  [key: string]: any;
+  [key: string]: string | number | boolean;
   
   // Parsed fields
   sourceFile: string;
@@ -11,30 +11,30 @@ export interface PublisherRecord {
   index: string | number;
   
   // Column B: Auxiliary Pioneer status
-  auxiliaryPioneer: string | boolean;
+  auxiliaryPioneer: boolean;
   
   // Column C: Regular Pioneer status  
-  regularPioneer: string | boolean;
+  regularPioneer: boolean;
   
   // Column D: Publisher status
-  isPublisher: string | boolean;
+  isPublisher: boolean;
   
   // Column E: Publisher Name
   name: string;
   
   // For Regular Publishers (Column G & H)
-  sharedInMinistry: string | boolean;  // G
-  bibleStudies: string | number;       // H
+  sharedInMinistry: boolean;  // G
+  bibleStudies: number;       // H
   
   // For Auxiliary Pioneers (Column I, J, K)
-  auxSharedInMinistry: string | boolean;  // I
-  auxHours: string | number;              // J
-  auxBibleStudies: string | number;       // K
+  auxSharedInMinistry: boolean;  // I
+  auxHours: number;              // J
+  auxBibleStudies: number;       // K
   
   // For Regular Pioneers (Column L, M, N)
-  regSharedInMinistry: string | boolean;  // L
-  regHours: string | number;              // M
-  regBibleStudies: string | number;       // N
+  regSharedInMinistry: boolean;  // L
+  regHours: number;              // M
+  regBibleStudies: number;       // N
 }
 
 export interface ProcessingStats {
@@ -63,8 +63,7 @@ export interface SummaryStats extends ProcessingStats {
 
 export interface ParsedFileData {
   name: string;
-  sheets: { [sheetName: string]: any[] };
-  [sheetName: string]: any;
+  sheets: { [sheetName: string]: Record<string, string | number | boolean>[] };
 }
 
 export interface TableHeader {

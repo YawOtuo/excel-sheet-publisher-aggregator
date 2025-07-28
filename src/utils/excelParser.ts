@@ -11,7 +11,7 @@ import type {
  * Helper function to convert Excel values to boolean
  * Excel checkboxes can be TRUE, "TRUE", true, 1, "1", etc.
  */
-const parseExcelBoolean = (value: any): boolean => {
+const parseExcelBoolean = (value: string | number | boolean): boolean => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     const lowerValue = value.toLowerCase().trim();
@@ -24,8 +24,9 @@ const parseExcelBoolean = (value: any): boolean => {
 /**
  * Helper function to parse numeric values from Excel
  */
-const parseExcelNumber = (value: any): number => {
+const parseExcelNumber = (value: string | number | boolean): number => {
   if (typeof value === 'number') return value;
+  if (typeof value === 'boolean') return value ? 1 : 0;
   if (typeof value === 'string') {
     const parsed = parseFloat(value);
     return isNaN(parsed) ? 0 : parsed;
@@ -50,7 +51,7 @@ export const parseExcelFile = async (file: File): Promise<ParsedFileData> => {
         const result: ParsedFileData = {
           name: file.name,
           sheets: {}
-        };
+        } as ParsedFileData;
         
         // Process each sheet in the workbook
         workbook.SheetNames.forEach(sheetName => {
@@ -59,10 +60,9 @@ export const parseExcelFile = async (file: File): Promise<ParsedFileData> => {
             header: 'A',
             defval: '',
             raw: false
-          });
+          }) as Record<string, string | number | boolean>[];
           
           result.sheets[sheetName] = jsonData;
-          (result as any)[sheetName] = jsonData; // Also add directly for backward compatibility
         });
         
         resolve(result);
@@ -85,7 +85,7 @@ export const parseExcelFile = async (file: File): Promise<ParsedFileData> => {
  * @param fileData - Parsed file data
  * @returns The main data sheet rows
  */
-export const findMainDataSheet = (fileData: ParsedFileData): any[] => {
+export const findMainDataSheet = (fileData: ParsedFileData): Record<string, string | number | boolean>[] => {
   const sheetNames = Object.keys(fileData.sheets || {});
   
   // Priority order for sheet selection
@@ -135,12 +135,12 @@ export const organizePublishers = (allFilesData: ParsedFileData[]): OrganizedPub
     // Add file identifier
     const fileIdentifier = fileData.name || `file_${Date.now()}`;
     
-    sheet.forEach((row: any, index: number) => {
+    sheet.forEach((row: Record<string, string | number | boolean>, index: number) => {
       processingStats.totalRows++;
       
       // Process all rows - get publisher name from column E
       const publisherName = row.E || '';
-      if (!publisherName || publisherName.trim() === '') {
+      if (!publisherName || publisherName.toString().trim() === '') {
         // If no publisher name, skip this row
         return;
       }
@@ -148,8 +148,8 @@ export const organizePublishers = (allFilesData: ParsedFileData[]): OrganizedPub
       processingStats.publisherRows++;
       
       // Initialize publisher array if it doesn't exist
-      if (!publishersData[publisherName]) {
-        publishersData[publisherName] = [];
+      if (!publishersData[publisherName.toString()]) {
+        publishersData[publisherName.toString()] = [];
         processingStats.uniquePublishers++;
       }
       
@@ -158,10 +158,10 @@ export const organizePublishers = (allFilesData: ParsedFileData[]): OrganizedPub
         ...row,
         sourceFile: fileIdentifier,
         rowIndex: index + 1,
-        publisherName: publisherName,
+        publisherName: publisherName.toString(),
         
         // Column A: Index/Number
-        index: row.A || '',
+        index: typeof row.A === 'string' || typeof row.A === 'number' ? row.A : '',
         
         // Column B: Auxiliary Pioneer status (checkbox)
         auxiliaryPioneer: parseExcelBoolean(row.B),
@@ -173,7 +173,7 @@ export const organizePublishers = (allFilesData: ParsedFileData[]): OrganizedPub
         isPublisher: parseExcelBoolean(row.D),
         
         // Column E: Publisher Name
-        name: row.E || '',
+        name: row.E?.toString() || '',
         
         // For Regular Publishers (Column G & H)
         sharedInMinistry: parseExcelBoolean(row.G),  // G: shared in ministry (checkbox)
@@ -190,7 +190,7 @@ export const organizePublishers = (allFilesData: ParsedFileData[]): OrganizedPub
         regBibleStudies: parseExcelNumber(row.N),       // N: reg bible studies (number)
       };
       
-      publishersData[publisherName].push(publisherRecord);
+      publishersData[publisherName.toString()].push(publisherRecord);
     });
   });
 
@@ -232,34 +232,59 @@ export const generateSummaryStats = (publishersData: OrganizedPublisherData): Su
     totalRegHours: 0
   };
 
-  Object.values(publishers).forEach(records => {
+  // Track unique publishers for each category
+  const auxiliaryPioneerPublishers = new Set<string>();
+  const regularPioneerPublishers = new Set<string>();
+  const specialPioneerPublishers = new Set<string>();
+  const missionaryPublishers = new Set<string>();
+
+  Object.entries(publishers).forEach(([publisherName, records]) => {
     totalRecords += records.length;
     
     records.forEach(record => {
       totalFiles.add(record.sourceFile);
       
-      // Count auxiliary pioneers (now using boolean values)
+      // Track unique publishers for each category
       if (record.auxiliaryPioneer === true) {
-        aggregatedStats.totalAuxiliaryPioneers += 1;
+        auxiliaryPioneerPublishers.add(publisherName);
       }
       
-      // Count regular pioneers (now using boolean values)
       if (record.regularPioneer === true) {
-        aggregatedStats.totalRegularPioneers += 1;
+        regularPioneerPublishers.add(publisherName);
       }
       
-      // Sum bible studies from all categories (now using numbers)
-      aggregatedStats.totalBibleStudies += (record.bibleStudies as number) +
-                                           (record.auxBibleStudies as number) +
-                                           (record.regBibleStudies as number);
+      // Note: Special Pioneers and Missionaries are not currently tracked in the data structure
+      // These would need to be added to the Excel parsing if they exist
       
-      // Sum hours (now using numbers)
-      aggregatedStats.totalAuxHours += record.auxHours as number;
-      aggregatedStats.totalRegHours += record.regHours as number;
+      // Sum bible studies - use the appropriate category based on publisher status
+      let bibleStudiesForThisRecord = 0;
+      if (record.auxiliaryPioneer === true) {
+        bibleStudiesForThisRecord = (record.auxBibleStudies as number) || 0;
+      } else if (record.regularPioneer === true) {
+        bibleStudiesForThisRecord = (record.regBibleStudies as number) || 0;
+      } else if (record.isPublisher === true) {
+        bibleStudiesForThisRecord = (record.bibleStudies as number) || 0;
+      }
+      aggregatedStats.totalBibleStudies += bibleStudiesForThisRecord;
+      
+      // Sum hours - only count if the person is actually that type of pioneer
+      if (record.auxiliaryPioneer === true) {
+        aggregatedStats.totalAuxHours += (record.auxHours as number) || 0;
+      }
+      
+      if (record.regularPioneer === true) {
+        aggregatedStats.totalRegHours += (record.regHours as number) || 0;
+      }
     });
   });
 
-  const { totalFiles: _, ...statsWithoutTotalFiles } = publishersData.stats;
+  // Set the counts based on unique publishers
+  aggregatedStats.totalAuxiliaryPioneers = auxiliaryPioneerPublishers.size;
+  aggregatedStats.totalRegularPioneers = regularPioneerPublishers.size;
+  aggregatedStats.totalSpecialPioneers = specialPioneerPublishers.size;
+  aggregatedStats.totalMissionaries = missionaryPublishers.size;
+
+  const { totalFiles: processingTotalFiles, ...statsWithoutTotalFiles } = publishersData.stats;
 
   return {
     totalPublishers,

@@ -27,7 +27,7 @@ const PublisherTable: React.FC<PublisherTableProps> = ({ publisherName, records 
     ];
   };
 
-  const formatCellValue = (value: any, key: string): string => {
+  const formatCellValue = (value: string | number | boolean, key: string): string => {
     // Handle boolean values (checkboxes)
     if (typeof value === 'boolean') {
       return value ? '✓' : '';

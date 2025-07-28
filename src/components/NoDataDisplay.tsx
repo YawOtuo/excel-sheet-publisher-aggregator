@@ -21,7 +21,7 @@ const NoDataDisplay: React.FC<NoDataDisplayProps> = ({
     return (
       <div className="text-center py-10 text-gray-600 italic">
         <h3 className="text-xl font-semibold mb-2">No Publishers Found</h3>
-        <p>No publishers match your search term "{searchTerm}". Try a different search or clear the filter.</p>
+        <p>No publishers match your search term &quot;{searchTerm}&quot;. Try a different search or clear the filter.</p>
       </div>
     );
   }
